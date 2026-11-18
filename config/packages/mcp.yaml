@@ -1,0 +1,38 @@
+mcp:
+    servers:
+        coroner:
+            name: 'coroner'
+            version: '1.0.0'
+            instructions: |
+                Coroner performs forensics on Symfony Messenger failed messages.
+
+                Workflow: list_failed_messages -> inspect_failed_message and/or
+                analyze_failed_message -> fix the underlying cause (in the app)
+                -> retry_failed_message, or discard_failed_message for messages
+                that can never succeed.
+
+                list/inspect/analyze are read-only and always safe.
+                retry_failed_message and discard_failed_message ALWAYS elicit the
+                human operator for approval before touching anything.
+            transports:
+                stdio: true
+                http: true
+            http:
+                path: /mcp/coroner
+            request_state:
+                key: '%env(resolve:MCP_REQUEST_STATE_KEY)%'
+                ttl: 600
+            registry: '*'
+
+    clients:
+        # The client connection used by the coroner-chat agent's toolbox.
+        # It talks to the coroner server above over STDIO, in-process.
+        coroner_chat:
+            client_info:
+                name: 'coroner-chat'
+                version: '1.0.0'
+            elicitation: 'App\Coroner\Mcp\TerminalElicitation'
+            servers:
+                coroner:
+                    transport: stdio
+                    command: ['php', 'bin/console', 'mcp:server', 'coroner']

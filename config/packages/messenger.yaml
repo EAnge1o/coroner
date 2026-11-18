@@ -1,0 +1,20 @@
+framework:
+    messenger:
+        # Everything that fails after its retries ends up here — the
+        # graveyard Coroner investigates.
+        failure_transport: failed
+
+        transports:
+            orders:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%&table_name=messenger_orders'
+                retry_strategy:
+                    max_retries: 2
+                    delay: 300
+                    multiplier: 1
+
+            failed:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%&table_name=messenger_failed'
+
+        routing:
+            App\Coroner\Message\ProcessOrder: orders
+            App\Coroner\Message\SendOrderConfirmation: orders

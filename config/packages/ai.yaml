@@ -1,0 +1,23 @@
+ai:
+    platform:
+        ollama:
+            endpoint: '%env(OLLAMA_ENDPOINT)%'
+
+    agent:
+        # The interactive assistant used by `bin/console coroner:chat`.
+        # Its toolbox IS the coroner MCP server: the agent calls the same
+        # forensic tools an external client (e.g. Claude Code) would call.
+        coroner_chat:
+            platform: ai.platform.ollama
+            model: '%env(OLLAMA_MODEL)%'
+            max_tool_calls: 12
+            tools:
+                enabled: true
+                services:
+                    - mcp_server: 'coroner_chat.coroner'
+
+        # A tool-less agent used by the analyze_failed_message MCP tool:
+        # one structured "cause of death" call over the evidence pack.
+        coroner_analyst:
+            platform: ai.platform.ollama
+            model: '%env(OLLAMA_MODEL)%'
