@@ -1,5 +1,11 @@
 # Coroner
 
+[![CI](https://github.com/EAnge1o/coroner/actions/workflows/ci.yml/badge.svg)](https://github.com/EAnge1o/coroner/actions/workflows/ci.yml)
+![PHP 8.4](https://img.shields.io/badge/php-8.4-777bb4?logo=php&logoColor=white)
+![Symfony AI 1.0.0-BETA1](https://img.shields.io/badge/symfony_ai-1.0.0--BETA1-000000?logo=symfony&logoColor=white)
+![MCP SDK 0.9](https://img.shields.io/badge/mcp_sdk-0.9-2f6feb)
+![License](https://img.shields.io/badge/license-MIT-3fb950)
+
 **MCP-powered forensics for Symfony Messenger failed messages.**
 
 Every Symfony app has a graveyard: the failure transport, where messages pile up
@@ -63,6 +69,17 @@ a discard.
 ```bash
 php bin/console coroner:chat
 ```
+
+### Path C: your eyes
+
+```bash
+php -S localhost:8000 -t public/
+# open http://localhost:8000 — the morgue, live
+```
+
+In Claude Code you can also invoke the `coroner_triage` **prompt** (the
+canonical investigation workflow) or read the `coroner://graveyard`
+**resource** — tools, resources and prompts, the full protocol surface.
 
 `coroner:chat` is a Symfony AI agent whose **toolbox IS the coroner MCP
 server** — it connects to it as an MCP client over STDIO (a second `mcp:server`
@@ -132,27 +149,50 @@ default) if you prefer connecting Claude/other clients over HTTP:
 
 ## Architecture
 
-```
-your MCP client (Claude Code / Cursor)          coroner:chat (Symfony AI agent)
-        │  stdio                                        │ stdio (MCP client)
-        ▼                                               ▼
-┌───────────────────────────────────────────────────────────────┐
-│  Symfony app                                                  │
-│  ├── mcp:server coroner          ← 5 #[McpTool] services      │
-│  ├── Symfony AI (Ollama)         ← analyze_failed_message     │
-│  ├── Messenger: orders transport + failed transport          │
-│  └── demo bookshop: Order entity, 2 handlers, InventoryClient│
-└───────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph clients["Your MCP clients"]
+        CC["Claude Code / Cursor"]
+        CHAT["coroner:chat<br/>Symfony AI agent<br/>(Ollama, zero key)"]
+    end
+
+    subgraph app["The Symfony app"]
+        SERVER["mcp:server coroner<br/>stdio + POST /mcp/coroner"]
+        TOOLS["5 × #[McpTool]<br/>list · inspect · analyze<br/>retry · discard"]
+        BRIEF["#[McpResource] graveyard<br/>#[McpPrompt] triage"]
+        AI["Symfony AI 1.0.0-BETA1<br/>structured output over Ollama"]
+        ELICIT["elicitation<br/>(human approval)"]
+        MSG["Messenger<br/>orders → failed transport"]
+        SHOP["demo bookshop<br/>Order · handlers · InventoryClient"]
+    end
+
+    HUMAN(["the human operator"])
+
+    CC -- "MCP" --> SERVER
+    CHAT -- "MCP client over stdio" --> SERVER
+    SERVER --> TOOLS & BRIEF
+    TOOLS --> MSG
+    TOOLS -- "analyze" --> AI
+    TOOLS -- "retry / discard" --> ELICIT
+    ELICIT -.-> HUMAN
+    HUMAN -.->|approve / decline| ELICIT
+    CHAT --- AI
+    MSG --> SHOP
 ```
 
 - `src/Coroner/Mcp/CoronerTools.php` — the five tools; services wired straight
   into Messenger's receiver locator and Doctrine.
-- `src/Coroner/Mcp/AnalysisService.php` — the pathologist: one system prompt,
-  the evidence pack, JSON out (tolerant parsing, `unknown` fallback).
+- `src/Coroner/Mcp/CoronerBriefings.php` — the read-only side: a live
+  `coroner://graveyard` resource and the `coroner_triage` workflow prompt.
+- `src/Coroner/Mcp/AnalysisService.php` — the pathologist: one structured call
+  (native Ollama `format` via the platform's `response_format` option, with a
+  tolerant parser as the safety net for other providers).
 - `src/Coroner/Mcp/TerminalElicitation.php` — the terminal-side elicitation
   handler (`Mcp\Client\Handler\Request\ElicitationCallbackInterface`).
 - `config/packages/ai.yaml` — two agents: `coroner_chat` (tool-using, MCP
   toolbox) and `coroner_analyst` (plain, one-shot).
+- `src/Coroner/Controller/DashboardController.php` — `http://localhost:8000/`,
+  a live morgue page showing exactly the data the tools operate on.
 
 ## Tests
 

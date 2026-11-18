@@ -36,6 +36,25 @@ final class AnalysisService
         {"failure_class":"transient|bug|poison|unknown","root_cause":"one sentence","evidence":"the strongest 1-2 clues you relied on","recommended_action":"retry|fix_then_retry|discard","fix_suggestion":"concrete next step for a developer, empty string if not applicable","confidence":0.0}
         PROMPT;
 
+    /**
+     * JSON schema passed as the platform's `response_format` option. The Ollama
+     * bridge maps it to Ollama's native `format` parameter, which *forces*
+     * structurally valid JSON — no more markdown-fence soup from small models.
+     * Hand-rolled parsing below stays as the safety net for other providers.
+     */
+    private const DIAGNOSIS_JSON_SCHEMA = [
+        'type' => 'object',
+        'properties' => [
+            'failure_class' => ['type' => 'string', 'enum' => ['transient', 'bug', 'poison', 'unknown']],
+            'root_cause' => ['type' => 'string'],
+            'evidence' => ['type' => 'string'],
+            'recommended_action' => ['type' => 'string', 'enum' => ['retry', 'fix_then_retry', 'discard']],
+            'fix_suggestion' => ['type' => 'string'],
+            'confidence' => ['type' => 'number'],
+        ],
+        'required' => ['failure_class', 'root_cause', 'evidence', 'recommended_action', 'fix_suggestion', 'confidence'],
+    ];
+
     public function __construct(
         #[Autowire(service: 'ai.agent.coroner_analyst')]
         private readonly AgentInterface $analyst,
@@ -54,7 +73,9 @@ final class AnalysisService
             Message::ofUser($this->json($evidence)),
         );
 
-        $content = $this->analyst->call($messages)->getContent();
+        $content = $this->analyst->call($messages, [
+            'response_format' => ['json_schema' => ['schema' => self::DIAGNOSIS_JSON_SCHEMA]],
+        ])->getContent();
 
         $diagnosis = $this->extractJson($content);
 

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coroner — forensics for Symfony Messenger</title>
+    <style>
+        :root {
+            --bg: #0d1117; --panel: #161b22; --border: #30363d;
+            --text: #c9d1d9; --muted: #8b949e;
+            --green: #3fb950; --red: #f85149; --amber: #d29922; --blue: #58a6ff;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg); color: var(--text);
+            font: 14px/1.5 ui-monospace, 'Cascadia Code', Consolas, monospace;
+            padding: 32px 24px 64px;
+        }
+        header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 6px; }
+        h1 { font-size: 22px; letter-spacing: 1px; }
+        h1 span { color: var(--red); }
+        .tagline { color: var(--muted); }
+        .connect { margin: 10px 0 28px; color: var(--muted); }
+        .connect code { color: var(--blue); }
+        section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px; }
+        h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 14px; }
+        h2 .count { color: var(--text); }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; color: var(--muted); font-weight: normal; padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 12px; }
+        td { padding: 7px 10px; border-bottom: 1px solid #21262d; vertical-align: top; }
+        tr:last-child td { border-bottom: none; }
+        .pill { display: inline-block; padding: 1px 9px; border-radius: 10px; font-size: 12px; }
+        .pill.shipped { color: var(--green); background: rgba(63,185,80,.12); }
+        .pill.confirmed { color: var(--green); background: rgba(63,185,80,.12); }
+        .pill.received { color: var(--amber); background: rgba(210,153,34,.12); }
+        .pill.graveyard { color: var(--red); background: rgba(248,81,73,.12); }
+        .id { color: var(--blue); }
+        .error { color: var(--red); }
+        .muted { color: var(--muted); }
+        .payload { color: var(--muted); font-size: 12px; white-space: pre-wrap; word-break: break-all; }
+        .empty { color: var(--muted); font-style: italic; padding: 12px 10px; }
+        footer { color: var(--muted); font-size: 12px; margin-top: 8px; }
+        a { color: var(--blue); text-decoration: none; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>☠ CORONER <span>//</span> morgue</h1>
+        <span class="tagline">forensics for Symfony Messenger failed messages</span>
+    </header>
+    <p class="connect">
+        MCP server: <code>php bin/console mcp:server coroner</code> (stdio) · <code>POST /mcp/coroner</code> (http) ·
+        agent: <code>php bin/console coroner:chat</code> — read the graveyard with <code>list_failed_messages</code>,
+        open bodies with <code>inspect_failed_message</code>, get verdicts from <code>analyze_failed_message</code>.
+    </p>
+
+    <section>
+        <h2>THE GRAVEYARD <span class="count">— {{ failed|length }} failed message{{ failed|length == 1 ? '' : 's' }} in the failure transport</span></h2>
+        {% if failed is empty %}
+            <p class="empty">Empty. Nobody died today. Run <code>php bin/console coroner:demo:break</code> to break something.</p>
+        {% else %}
+            <table>
+                <tr><th>id</th><th>message</th><th>payload</th><th>cause of death</th><th>retries</th></tr>
+                {% for f in failed %}
+                    <tr>
+                        <td class="id">#{{ f.id }}</td>
+                        <td>{{ f.class|split('\\')|last }}</td>
+                        <td class="payload">{{ f.payload }}</td>
+                        <td class="error">{{ f.error }} <span class="muted">({{ f.exception_class }})</span></td>
+                        <td>{{ f.retries }}</td>
+                    </tr>
+                {% endfor %}
+            </table>
+        {% endif %}
+    </section>
+
+    <section>
+        <h2>ORDERS <span class="count">— {{ orders|length }} in the morgue register</span></h2>
+        <table>
+            <tr><th>id</th><th>sku</th><th>qty</th><th>customer</th><th>status</th></tr>
+            {% for order in orders %}
+                <tr>
+                    <td class="id">#{{ order.id }}</td>
+                    <td>{{ order.sku }}</td>
+                    <td>{{ order.quantity }}</td>
+                    <td class="muted">{{ order.customerEmail }}</td>
+                    <td><span class="pill {{ order.status }}">{{ order.status }}</span></td>
+                </tr>
+            {% endfor %}
+        </table>
+    </section>
+
+    <footer>
+        Coroner · Symfony AI 1.0.0-BETA1 + official PHP MCP SDK (mcp/sdk) · destructive tools always elicit the human —
+        <a href="https://github.com/EAnge1o/coroner">source on GitHub</a>
+    </footer>
+</body>
+</html>
