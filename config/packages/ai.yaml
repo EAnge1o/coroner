@@ -18,6 +18,9 @@ ai:
 
         # A tool-less agent used by the analyze_failed_message MCP tool:
         # one structured "cause of death" call over the evidence pack.
+        # Uses a dedicated model env var — the coder model diagnoses
+        # beautifully, but the chat agent must run a model whose template
+        # emits native tool calls (qwen2.5-coder's does not).
         coroner_analyst:
             platform: ai.platform.ollama
-            model: '%env(OLLAMA_MODEL)%'
+            model: '%env(OLLAMA_ANALYST_MODEL)%'

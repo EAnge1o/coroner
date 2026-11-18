@@ -35,8 +35,9 @@ Built on **Symfony AI 1.0.0-BETA1** and the official **PHP MCP SDK**
 
 ## Quick start (5 minutes, no API key)
 
-Requirements: PHP 8.4+, Composer, [Ollama](https://ollama.com) (`ollama pull
-qwen2.5-coder:7b` ~4.7 GB, or see [Docker](#running-ollama-in-docker) below).
+Requirements: PHP 8.4+, Composer, [Ollama](https://ollama.com) with two models
+(`ollama pull qwen2.5:3b` for the chat agent, `ollama pull qwen2.5-coder:7b`
+for the pathologist — or see [Docker](#running-ollama-in-docker) below).
 
 ```bash
 git clone <this repo> coroner && cd coroner
@@ -66,9 +67,31 @@ a discard.
 
 ### Path B: the bundled agent (zero external client)
 
+The chat agent is a Symfony AI agent whose toolbox IS the coroner MCP server —
+it connects to it as an MCP client over **HTTP** (the sessionless `2026-07-28`
+protocol). Two terminals:
+
 ```bash
+# terminal 1 — the MCP server over HTTP
+php -S 127.0.0.1:8033 -t public/
+
+# terminal 2 — the agent
 php bin/console coroner:chat
 ```
+
+Elicitation approvals surface right in the terminal:
+
+```
+=============== CORONER APPROVAL REQUIRED ===============
+Coroner wants to RETRY failed message #21 (App\Coroner\Message\ProcessOrder). ...
+Retry failed message #21 [y/n]:
+```
+
+> **Models**: `OLLAMA_MODEL` (the chat agent) **must** be a model whose Ollama
+> template emits native tool calls — `qwen2.5:3b` works, and so do
+> `llama3.1:8b`, `qwen3:8b`… `qwen2.5-coder:7b` does **not** (its template
+> renders tool calls as plain text), but it is the default `OLLAMA_ANALYST_MODEL`
+> for the `analyze_failed_message` diagnosis, where it excels.
 
 ### Path C: your eyes
 

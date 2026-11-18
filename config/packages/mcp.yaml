@@ -26,7 +26,9 @@ mcp:
 
     clients:
         # The client connection used by the coroner-chat agent's toolbox.
-        # It talks to the coroner server above over STDIO, in-process.
+        # It talks to the coroner server over HTTP (the modern sessionless
+        # 2026-07-28 protocol, with request-state signing — see the server
+        # config above). Start the web server first: `php -S 127.0.0.1:8033 -t public`.
         coroner_chat:
             client_info:
                 name: 'coroner-chat'
@@ -34,5 +36,5 @@ mcp:
             elicitation: 'App\Coroner\Mcp\TerminalElicitation'
             servers:
                 coroner:
-                    transport: stdio
-                    command: ['php', 'bin/console', 'mcp:server', 'coroner']
+                    transport: http
+                    url: 'http://127.0.0.1:8033/mcp/coroner'
