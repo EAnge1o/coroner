@@ -44,16 +44,23 @@ final class InventoryClient
         }
 
         // The bug: for BOOK-GHOST-000 the 'count' key does not exist, PHP
-        // raises "Undefined array key" and $count ends up null — the int
-        // arithmetic below then throws a TypeError.
+        // raises "Undefined array key" and $count ends up null — feeding
+        // null into the typed stock math below throws a TypeError. The
+        // canonical one-line fix is `$row['stock']['count'] ?? $quantity`
+        // (treat discontinued titles as publisher special-orders).
         $count = $row['stock']['count'];
-        $remaining = $count - $quantity;
+        $remaining = self::subtractStock($count, $quantity);
 
         if ($remaining < 0) {
             throw new \DomainException(\sprintf('SKU "%s" is out of stock: requested %d, available %d.', $sku, $quantity, $count));
         }
 
         return $remaining;
+    }
+
+    private static function subtractStock(int $available, int $quantity): int
+    {
+        return $available - $quantity;
     }
 
     public function isOutage(): bool
