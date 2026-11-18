@@ -73,11 +73,27 @@ final class AnalysisService
             Message::ofUser($this->json($evidence)),
         );
 
-        $content = $this->analyst->call($messages, [
-            'response_format' => ['json_schema' => ['schema' => self::DIAGNOSIS_JSON_SCHEMA]],
-        ])->getContent();
+        try {
+            $content = $this->analyst->call($messages, [
+                'response_format' => ['json_schema' => ['schema' => self::DIAGNOSIS_JSON_SCHEMA]],
+            ])->getContent();
+        } catch (\Throwable $e) {
+            // A tool that hard-fails helps nobody: surface the failure as a
+            // diagnosis the calling model can reason about.
+            return [
+                'failure_class' => 'unknown',
+                'root_cause' => 'The analyst call failed: '.$e->getMessage(),
+                'evidence' => '',
+                'recommended_action' => 'inspect_failed_message and decide manually.',
+                'fix_suggestion' => 'Check that OLLAMA_ENDPOINT is reachable and OLLAMA_MODEL supports tool-less chat.',
+                'confidence' => 0.0,
+            ];
+        }
 
-        $diagnosis = $this->extractJson($content);
+        // With response_format the platform hands back the already-decoded
+        // structured output (ObjectResult → array); plain text providers
+        // return the raw string, which the tolerant parser still handles.
+        $diagnosis = \is_array($content) ? $content : $this->extractJson($content);
 
         return $diagnosis ?? [
             'failure_class' => 'unknown',
